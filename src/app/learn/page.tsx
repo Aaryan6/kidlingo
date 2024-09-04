@@ -1,11 +1,5 @@
-"use client";
-
-import { FlashcardPage } from "@/components/flashcard-page";
+import { redirect } from "next/navigation";
 
 export default function LearnPage() {
-  return (
-    <div className="">
-      <FlashcardPage />
-    </div>
-  );
+  redirect("/");
 }

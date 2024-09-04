@@ -1,64 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Book, Users, Zap, Trophy, Gift } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { languageLearningLevels } from "@/content";
+import { useUserProgress } from "@/hooks/useUserProgress"; // We'll create this hook
 
 export function ModernKidLingo() {
+  const { userLevel, userProgress, updateUserProgress } = useUserProgress();
   const [activeLevel, setActiveLevel] = useState(1);
   const router = useRouter();
-
-  const levels = [
-    {
-      number: 1,
-      name: "Alphabet Adventure",
-      icon: <Book className="w-6 h-6" />,
-      cards: [
-        {
-          title: "Letter Sounds",
-          icon: <Zap className="w-5 h-5" />,
-          color: "bg-pink-100 text-pink-600",
-        },
-        {
-          title: "Writing Fun",
-          icon: <Star className="w-5 h-5" />,
-          color: "bg-purple-100 text-purple-600",
-        },
-        {
-          title: "Word Start",
-          icon: <Users className="w-5 h-5" />,
-          color: "bg-blue-100 text-blue-600",
-        },
-      ],
-    },
-    {
-      number: 2,
-      name: "Number Ninja",
-      icon: <Trophy className="w-6 h-6" />,
-      cards: [
-        {
-          title: "Counting Stars",
-          icon: <Star className="w-5 h-5" />,
-          color: "bg-yellow-100 text-yellow-600",
-        },
-        {
-          title: "Math Magic",
-          icon: <Zap className="w-5 h-5" />,
-          color: "bg-green-100 text-green-600",
-        },
-        {
-          title: "Shape Shifter",
-          icon: <Gift className="w-5 h-5" />,
-          color: "bg-red-100 text-red-600",
-        },
-      ],
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-green-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -73,19 +28,20 @@ export function ModernKidLingo() {
         </motion.h1>
 
         <div className="mb-8 flex items-center justify-between">
-          <Progress value={65} className="w-2/3" />
+          <Progress value={userProgress} className="w-2/3" />
           <Badge variant="secondary" className="text-lg py-1 px-3">
-            Level {activeLevel}
+            Level {userLevel}
           </Badge>
         </div>
 
-        {levels.map((level) => (
+        {languageLearningLevels.map((level) => (
           <motion.div
             key={level.number}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: level.number * 0.2 }}
-            className="mb-12"
+            className={`mb-12`}
+            // className={`mb-12 ${level.number > userLevel ? "opacity-50" : ""}`}
           >
             <div className="flex items-center mb-6">
               <motion.div
@@ -96,7 +52,9 @@ export function ModernKidLingo() {
               >
                 {level.icon}
               </motion.div>
-              <h2 className="text-3xl font-bold text-gray-800">{level.name}</h2>
+              <h2 className="text-3xl font-bold text-gray-800">
+                Level {level.number} : {level.name}
+              </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {level.cards.map((card, index) => (
@@ -104,7 +62,15 @@ export function ModernKidLingo() {
                   key={index}
                   whileHover={{ scale: 1.05, rotate: 2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push("/learn")}
+                  onClick={() =>
+                    // level.number <= userLevel &&
+                    router.push(`/learn/${level.number}/${index}`)
+                  }
+                  // className={
+                  //   level.number > userLevel
+                  //     ? "cursor-not-allowed"
+                  //     : "cursor-pointer"
+                  // }
                 >
                   <Card className="overflow-hidden shadow-xl">
                     <CardContent className={`p-6 ${card.color}`}>
@@ -116,7 +82,11 @@ export function ModernKidLingo() {
                         <Button
                           variant="secondary"
                           className="font-semibold text-lg"
+                          // disabled={level.number > userLevel}
                         >
+                          {/* {level.number <= userLevel
+                            ? "Start Learning"
+                            : "Locked"} */}
                           Start Learning
                         </Button>
                       </div>
