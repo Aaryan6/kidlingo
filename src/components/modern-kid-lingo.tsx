@@ -2,13 +2,21 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { languageLearningLevels } from "@/content";
 import { useUserProgress } from "@/hooks/useUserProgress"; // We'll create this hook
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export function ModernKidLingo() {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
@@ -28,8 +36,8 @@ export function ModernKidLingo() {
         </motion.h1>
 
         <div className="mb-8 flex items-center justify-between">
-          <Progress value={userProgress} className="w-2/3" />
-          <Badge variant="secondary" className="text-lg py-1 px-3">
+          <Progress value={userProgress} className="w-2/3 bg-white border" />
+          <Badge variant="default" className="text-lg py-1 px-3">
             Level {userLevel}
           </Badge>
         </div>
@@ -47,7 +55,9 @@ export function ModernKidLingo() {
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 className={`w-14 h-14 rounded-full ${
-                  activeLevel === level.number ? "bg-green-400" : "bg-gray-200"
+                  activeLevel === level.number
+                    ? "bg-primary/80"
+                    : "bg-primary/80"
                 } flex items-center justify-center text-white font-bold mr-4 shadow-lg`}
               >
                 {level.icon}
@@ -66,30 +76,35 @@ export function ModernKidLingo() {
                     // level.number <= userLevel &&
                     router.push(`/learn/${level.number}/${index}`)
                   }
+                  className="h-full"
                   // className={
                   //   level.number > userLevel
                   //     ? "cursor-not-allowed"
                   //     : "cursor-pointer"
                   // }
                 >
-                  <Card className="overflow-hidden shadow-xl">
-                    <CardContent className={`p-6 ${card.color}`}>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">{card.title}</h3>
+                  <Card
+                    key={card.title}
+                    className={cn(
+                      `hover:shadow-lg bg-white transition-shadow h-full grid content-between`
+                    )}
+                  >
+                    <CardHeader className="">
+                      <CardTitle className="flex items-center gap-2">
                         {card.icon}
-                      </div>
-                      <div className="mt-4 h-32 bg-white bg-opacity-50 rounded-lg flex items-center justify-center">
-                        <Button
-                          variant="secondary"
-                          className="font-semibold text-lg"
-                          // disabled={level.number > userLevel}
-                        >
-                          {/* {level.number <= userLevel
-                            ? "Start Learning"
-                            : "Locked"} */}
-                          Start Learning
-                        </Button>
-                      </div>
+                        {card.title}
+                      </CardTitle>
+                      <CardDescription>
+                        {card.flashcards.length} flashcards available
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="outline"
+                        className="w-full bg-orange-100"
+                      >
+                        Start Learning
+                      </Button>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -104,12 +119,14 @@ export function ModernKidLingo() {
           transition={{ delay: 1 }}
           className="text-center mt-12"
         >
-          <Button
-            size="lg"
-            className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg"
-          >
-            Start Your Adventure!
-          </Button>
+          <Link href={`/learn/${userLevel}/1`}>
+            <Button
+              size="lg"
+              className="bg-orange-400 hover:bg-orange-500 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg"
+            >
+              Start Your Adventure!
+            </Button>
+          </Link>
         </motion.div>
       </div>
     </div>

@@ -1,29 +1,258 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { TouchBackend } from "react-dnd-touch-backend";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
-  ChevronLeft,
-  ChevronRight,
-  Volume2,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCcw, Volume2 } from "lucide-react";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useRouter } from "next/navigation";
 
-interface Flashcard {
-  english: string;
-  french: string;
+const isTouchDevice = () =>
+  "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+interface AnswerOption {
+  id: string;
+  text: string;
 }
 
+interface FlashcardData {
+  question: string;
+  options: AnswerOption[];
+  correctAnswer: string;
+}
+
+const DraggableAnswer = ({
+  id,
+  text,
+  isCorrect,
+}: AnswerOption & { isCorrect: boolean }) => {
+  const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
+    type: "answer",
+    item: { id, text },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
+
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    drag(ref);
+    dragPreview(ref);
+  }, [drag, dragPreview]);
+
+  return (
+    <div
+      ref={ref}
+      className={`p-3 rounded-lg shadow-sm font-medium cursor-move transition-all ${
+        isDragging ? "opacity-50 scale-105" : "opacity-100"
+      } ${isCorrect ? "bg-green-200" : "bg-orange-100 border"}`}
+      aria-label={`Drag answer: ${text}`}
+    >
+      {text}
+    </div>
+  );
+};
+
+const DropZone = ({
+  onDrop,
+  isCorrect,
+  droppedAnswer,
+}: {
+  onDrop: (item: AnswerOption) => void;
+  isCorrect: boolean | null;
+  droppedAnswer: string | null;
+}) => {
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: "answer",
+    drop: (item: AnswerOption) => onDrop(item),
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  }));
+
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    drop(ref);
+  }, [drop]);
+
+  let bgColor = "bg-gray-200";
+  if (isCorrect === true) bgColor = "bg-green-200";
+  if (isCorrect === false) bgColor = "bg-red-200";
+
+  return (
+    <div
+      ref={ref}
+      className={`h-24 w-full ${bgColor} bg-orange-50 rounded-lg flex flex-col items-center justify-center ${
+        isOver
+          ? "border-4 border-orange-200"
+          : "border-4 border-dashed border-orange-200"
+      } transition-all duration-300`}
+      aria-label="Drop answer here"
+    >
+      {droppedAnswer ? (
+        <>
+          <div className="text-xl font-bold mb-2">{droppedAnswer}</div>
+          <div className="text-sm">
+            {isCorrect === true && "✅ Correct!"}
+            {isCorrect === false && "❌ Incorrect. Try again!"}
+          </div>
+        </>
+      ) : (
+        <p className="text-xl font-bold text-orange-500/50">
+          Drop your answer here
+        </p>
+      )}
+    </div>
+  );
+};
+
+interface FlashcardProps {
+  data: FlashcardData;
+  currentCard: number;
+  totalCards: number;
+  onNextCard: () => void;
+  onPrevCard: () => void;
+  onAnswer: (isCorrect: boolean) => void;
+  speakWord: (text: string) => void;
+}
+
+const Flashcard: React.FC<FlashcardProps> = ({
+  data,
+  currentCard,
+  totalCards,
+  onNextCard,
+  onPrevCard,
+  onAnswer,
+  speakWord,
+}) => {
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [droppedAnswer, setDroppedAnswer] = useState<string | null>(null);
+  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
+
+  useEffect(() => {
+    setIsCorrect(null);
+    setDroppedAnswer(null);
+    setShowCorrectAnswer(false);
+  }, [data.question]);
+
+  const handleDrop = (item: AnswerOption) => {
+    const correct = item.text === data.correctAnswer;
+    setDroppedAnswer(item.text);
+    setIsCorrect(correct);
+    setShowCorrectAnswer(true);
+    onAnswer(correct);
+  };
+
+  return (
+    <Card className="w-full max-w-lg">
+      <CardContent className="p-6 w-full">
+        <div className="flex items-center justify-between w-full mb-4">
+          <span className="text-lg text-gray-600">
+            Question {currentCard} of {totalCards}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => speakWord(data.question)}
+            className="rounded-full"
+          >
+            <Volume2 className="h-4 w-4" />
+            <span className="sr-only">Pronounce question</span>
+          </Button>
+        </div>
+        <div className="text-2xl font-bold mb-6 text-center">
+          {data.question}
+        </div>
+        <DropZone
+          onDrop={handleDrop}
+          isCorrect={isCorrect}
+          droppedAnswer={droppedAnswer}
+        />
+        <div className="grid grid-cols-3 gap-4 mt-6">
+          {data.options && data.options.length > 0 ? (
+            data.options.map((option) => (
+              <DraggableAnswer
+                key={option.id}
+                id={option.id}
+                text={option.text}
+                isCorrect={
+                  showCorrectAnswer && option.text === data.correctAnswer
+                }
+              />
+            ))
+          ) : (
+            <p>No options available</p>
+          )}
+        </div>
+        <div className="flex justify-between items-center mt-6">
+          <Button
+            variant="outline"
+            onClick={onPrevCard}
+            disabled={currentCard === 1}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onNextCard}
+            disabled={!droppedAnswer}
+          >
+            Next
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const SummarySlide = ({
+  correctAnswers,
+  totalQuestions,
+  onRestart,
+}: {
+  correctAnswers: number;
+  totalQuestions: number;
+  onRestart: () => void;
+}) => {
+  return (
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
+      <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
+        <h2 className="text-2xl font-bold mb-4">Quiz Complete!</h2>
+        <p className="text-xl mb-4">
+          You got{" "}
+          <span className="font-bold text-orange-400">{correctAnswers}</span>{" "}
+          out of <span className="font-bold">{totalQuestions}</span> correct!
+        </p>
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+          <div
+            className="bg-orange-400 h-2.5 rounded-full"
+            style={{ width: `${(correctAnswers / totalQuestions) * 100}%` }}
+          ></div>
+        </div>
+        <button
+          onClick={onRestart}
+          className="bg-orange-400 text-white px-4 py-2 rounded-full transition-transform hover:scale-105 flex items-center justify-center mx-auto"
+        >
+          <RefreshCcw size={20} className="mr-2" />
+          Restart Quiz
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface FlashcardPageProps {
-  flashcards: Flashcard[];
+  flashcards: FlashcardData[];
   levelId: number;
-  cardId: number;
+  cardId?: number;
 }
 
 export function FlashcardPage({
@@ -32,14 +261,11 @@ export function FlashcardPage({
   cardId,
 }: FlashcardPageProps) {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
-  const [currentCard, setCurrentCard] = useState(0);
-  const [showEnglish, setShowEnglish] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] =
     useState<SpeechSynthesis | null>(null);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [hasAnswered, setHasAnswered] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -48,42 +274,24 @@ export function FlashcardPage({
     }
   }, []);
 
-  const toggleCard = () => {
-    if (!hasAnswered) {
-      setShowEnglish(!showEnglish);
-    }
-  };
-
-  const handleAnswer = (correct: boolean) => {
-    setIsCorrect(correct);
-    setHasAnswered(true);
-    if (correct) {
-      setCorrectAnswers((prev) => prev + 1);
-    }
-  };
-
-  const nextCard = () => {
-    if (!hasAnswered) return;
-
-    if (currentCard + 1 < flashcards.length) {
-      setCurrentCard((prev) => prev + 1);
-      resetCard();
+  const handleNextCard = () => {
+    if (currentCardIndex < flashcards.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
     } else {
       completeSet();
     }
   };
 
-  const prevCard = () => {
-    if (currentCard > 0) {
-      setCurrentCard((prev) => prev - 1);
-      resetCard();
+  const handlePrevCard = () => {
+    if (currentCardIndex > 0) {
+      setCurrentCardIndex(currentCardIndex - 1);
     }
   };
 
-  const resetCard = () => {
-    setShowEnglish(false);
-    setIsCorrect(null);
-    setHasAnswered(false);
+  const handleAnswer = (isCorrect: boolean) => {
+    if (isCorrect) {
+      setCorrectAnswers(correctAnswers + 1);
+    }
   };
 
   const completeSet = () => {
@@ -110,155 +318,63 @@ export function FlashcardPage({
     setIsCompleted(true);
   };
 
-  const speakWord = () => {
+  const handleRestart = () => {
+    setCurrentCardIndex(0);
+    setCorrectAnswers(0);
+    setIsCompleted(false);
+  };
+
+  const speakWord = (text: string) => {
     if (speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(
-        showEnglish
-          ? flashcards[currentCard].english
-          : flashcards[currentCard].french
-      );
-      utterance.lang = showEnglish ? "en-US" : "fr-FR";
-      if (!showEnglish) {
-        // Set a French voice if available
-        const frenchVoices = speechSynthesis
-          .getVoices()
-          .filter((voice) => voice.lang.startsWith("fr"));
-        if (frenchVoices.length > 0) {
-          utterance.voice = frenchVoices[0];
-        }
-      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
       speechSynthesis.speak(utterance);
     }
   };
 
+  const Backend = isTouchDevice() ? TouchBackend : HTML5Backend;
+
   if (isCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-green-50 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <h2 className="text-3xl font-bold text-green-600 mb-4">
-            Congratulations!
-          </h2>
-          <p className="text-xl mb-2">
-            You&apos;ve completed this flashcard set.
-          </p>
-          <p className="text-lg mb-6">
-            You got {correctAnswers} out of {flashcards.length} correct!
-          </p>
-          <Button
-            onClick={() => router.push("/learn")}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
-          >
-            Back to Learning Journey
-          </Button>
-        </motion.div>
-      </div>
+      <SummarySlide
+        correctAnswers={correctAnswers}
+        totalQuestions={flashcards.length}
+        onRestart={handleRestart}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-green-50 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold text-orange-500 mb-8">
-        Language Flashcards
-      </h1>
-      <div className="w-full max-w-md">
+    <DndProvider backend={Backend}>
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
+        <h1 className="text-4xl font-bold text-orange-500 mb-8">
+          Language Flashcards
+        </h1>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={currentCard + (showEnglish ? "-english" : "-foreign")}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="relative w-full cursor-pointer"
-            onClick={toggleCard}
-          >
-            <Card className="w-full">
-              <CardContent className="flex flex-col items-center justify-center p-6">
-                <div className="flex items-center justify-between w-full mb-4">
-                  <span className="text-lg text-gray-600">
-                    ({showEnglish ? "English" : "French"})
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      speakWord();
-                    }}
-                    className="rounded-full"
-                  >
-                    <Volume2 className="h-4 w-4" />
-                    <span className="sr-only">Pronounce word</span>
-                  </Button>
-                </div>
-                <div className="text-3xl font-bold text-gray-800 mb-2 min-h-[100px] flex items-center justify-center">
-                  {showEnglish
-                    ? flashcards[currentCard].english
-                    : flashcards[currentCard].french}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          {flashcards && flashcards.length > 0 ? (
+            <motion.div
+              key={currentCardIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full max-w-lg"
+            >
+              <Flashcard
+                data={flashcards[currentCardIndex]}
+                currentCard={currentCardIndex + 1}
+                totalCards={flashcards.length}
+                onNextCard={handleNextCard}
+                onPrevCard={handlePrevCard}
+                onAnswer={handleAnswer}
+                speakWord={speakWord}
+              />
+            </motion.div>
+          ) : (
+            <p>No flashcards available</p>
+          )}
         </AnimatePresence>
-
-        {showEnglish && !hasAnswered && (
-          <div className="mt-6 flex justify-center space-x-4">
-            <Button
-              variant="outline"
-              className="bg-green-100 hover:bg-green-200 text-green-600"
-              onClick={() => handleAnswer(true)}
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />I knew it!
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-red-100 hover:bg-red-200 text-red-600"
-              onClick={() => handleAnswer(false)}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Still learning
-            </Button>
-          </div>
-        )}
-
-        {hasAnswered && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`mt-4 p-3 rounded-md text-center ${
-              isCorrect
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {isCorrect
-              ? "Great job! Keep it up!"
-              : "No worries! Practice makes perfect!"}
-          </motion.div>
-        )}
-
-        <div className="mt-8 flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={prevCard}
-            disabled={currentCard === 0}
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Previous
-          </Button>
-          <Button variant="outline" onClick={resetCard}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Reset
-          </Button>
-          <Button variant="outline" onClick={nextCard} disabled={!hasAnswered}>
-            Next
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
       </div>
-    </div>
+    </DndProvider>
   );
 }
