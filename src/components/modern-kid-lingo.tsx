@@ -17,6 +17,13 @@ import { languageLearningLevels } from "@/content";
 import { useUserProgress } from "@/hooks/useUserProgress"; // We'll create this hook
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export function ModernKidLingo() {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
@@ -25,7 +32,7 @@ export function ModernKidLingo() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-green-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <motion.h1
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -49,15 +56,14 @@ export function ModernKidLingo() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: level.number * 0.2 }}
             className={`mb-12`}
-            // className={`mb-12 ${level.number > userLevel ? "opacity-50" : ""}`}
           >
             <div className="flex items-center mb-6">
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 className={`w-14 h-14 rounded-full ${
                   activeLevel === level.number
-                    ? "bg-primary/80"
-                    : "bg-primary/80"
+                    ? "bg-primary/70"
+                    : "bg-primary/70"
                 } flex items-center justify-center text-white font-bold mr-4 shadow-lg`}
               >
                 {level.icon}
@@ -66,50 +72,49 @@ export function ModernKidLingo() {
                 Level {level.number} : {level.name}
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {level.cards.map((card, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ scale: 1.05, rotate: 2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() =>
-                    // level.number <= userLevel &&
-                    router.push(`/learn/${level.number}/${index}`)
-                  }
-                  className="h-full"
-                  // className={
-                  //   level.number > userLevel
-                  //     ? "cursor-not-allowed"
-                  //     : "cursor-pointer"
-                  // }
-                >
-                  <Card
-                    key={card.title}
-                    className={cn(
-                      `hover:shadow-lg bg-white transition-shadow h-full grid content-between`
-                    )}
+            <Carousel className="w-full mx-auto overflow-visible">
+              <CarouselContent className="overflow-visible">
+                {level.cards.map((card, index) => (
+                  <CarouselItem
+                    key={index}
+                    className="md:basis-1/2 lg:basis-1/3 overflow-visible cursor-pointer"
                   >
-                    <CardHeader className="">
-                      <CardTitle className="flex items-center gap-2">
-                        {card.icon}
-                        {card.title}
-                      </CardTitle>
-                      <CardDescription>
-                        {card.flashcards.length} flashcards available
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        variant="outline"
-                        className="w-full bg-orange-100"
+                    <motion.div
+                      onClick={() =>
+                        router.push(`/learn/${level.number}/${index}`)
+                      }
+                      className="h-full"
+                    >
+                      <Card
+                        className={cn(
+                          `hover:shadow-lg bg-white transition-shadow h-full grid content-between`
+                        )}
                       >
-                        Start Learning
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+                        <CardHeader className="p-8">
+                          <CardTitle className="flex items-center gap-2">
+                            <div className="shrink-0">{card.icon}</div>
+                            {card.title}
+                          </CardTitle>
+                          <CardDescription className="py-2">
+                            {card.flashcards.length} flashcards available
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button
+                            variant="outline"
+                            className="w-full bg-orange-100"
+                          >
+                            Start Learning
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
           </motion.div>
         ))}
 
