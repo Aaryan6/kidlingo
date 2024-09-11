@@ -81,13 +81,20 @@ export function ModernKidLingo() {
                   >
                     <motion.div
                       onClick={() =>
-                        router.push(`/learn/${level.number}/${index}`)
+                        router.push(
+                          card.type === "flashcard"
+                            ? `/learn/${level.number}/${index}`
+                            : `/quiz/${level.number}/${index}`
+                        )
                       }
                       className="h-full"
                     >
                       <Card
                         className={cn(
-                          `hover:shadow-lg bg-white transition-shadow h-full grid content-between`
+                          `hover:shadow-lg bg-white transition-shadow h-full grid content-between`,
+                          card.type === "flashcard"
+                            ? ""
+                            : "border-2 border-dashed border-orange-300"
                         )}
                       >
                         <CardHeader className="p-8">
@@ -96,7 +103,9 @@ export function ModernKidLingo() {
                             {card.title}
                           </CardTitle>
                           <CardDescription className="py-2">
-                            {card.flashcards.length} flashcards available
+                            {card.type === "flashcard"
+                              ? `${card.flashcards.length} flashcards available`
+                              : `${card.questions.length} quiz questions available`}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -104,7 +113,9 @@ export function ModernKidLingo() {
                             variant="outline"
                             className="w-full bg-orange-100"
                           >
-                            Start Learning
+                            {card.type === "flashcard"
+                              ? "Start Learning"
+                              : "Start Quiz"}
                           </Button>
                         </CardContent>
                       </Card>

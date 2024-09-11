@@ -23,23 +23,28 @@ export default function LearnPage({
     return <div>Level or card not found</div>;
   }
 
-  return (
-    <div className="bg-gradient-to-b from-orange-50 to-green-50">
-      <Link
-        href="/"
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "flex items-center gap-2 absolute top-4 left-4"
-        )}
-      >
-        <ArrowLeft size={20} />
-        Back
-      </Link>
-      <FlashcardPage
-        flashcards={card.flashcards}
-        levelId={levelId}
-        cardId={cardId}
-      />
-    </div>
-  );
+  if ("flashcards" in card) {
+    return (
+      <div className="bg-gradient-to-b from-orange-50 to-green-50">
+        <Link
+          href="/"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "flex items-center gap-2 absolute top-4 left-4"
+          )}
+        >
+          <ArrowLeft size={20} />
+          Back
+        </Link>
+        <FlashcardPage
+          flashcards={card.flashcards}
+          levelId={levelId}
+          cardId={cardId}
+        />
+      </div>
+    );
+  }
+
+  // Handle QuizCard case or return an error message
+  return <div>This card type is not supported</div>;
 }
