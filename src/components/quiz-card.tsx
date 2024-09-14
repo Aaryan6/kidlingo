@@ -1,28 +1,15 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
-import { TouchBackend } from "react-dnd-touch-backend";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, RefreshCcw, Volume2 } from "lucide-react";
 import { useUserProgress } from "@/hooks/useUserProgress";
-
-interface AnswerOption {
-  id: string;
-  text: string;
-}
-
-interface QuizQuestion {
-  question: string;
-  options: AnswerOption[];
-  correctAnswer: string;
-  explanation: string;
-}
+import { useRouter } from "next/navigation";
+import { KIDLINGO_DB, FlashcardData } from "@/lib/schema";
 
 interface QuizCardProps {
-  data: QuizQuestion;
+  data: FlashcardData;
   currentQuestion: number;
   totalQuestions: number;
   onNextQuestion: () => void;
@@ -40,25 +27,18 @@ const QuizCard: React.FC<QuizCardProps> = ({
   onAnswer,
   speakWord,
 }) => {
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [droppedAnswer, setDroppedAnswer] = useState<string | null>(null);
-  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
-  const [hasAnswered, setHasAnswered] = useState(false);
 
   useEffect(() => {
+    setSelectedAnswer(null);
     setIsCorrect(null);
-    setDroppedAnswer(null);
-    setShowCorrectAnswer(false);
-    setHasAnswered(false);
   }, [data.question]);
 
-  const handleDrop = (item: AnswerOption) => {
-    if (hasAnswered) return;
-    const correct = item.text === data.correctAnswer;
-    setDroppedAnswer(item.text);
+  const handleAnswerSelect = (answer: string) => {
+    setSelectedAnswer(answer);
+    const correct = answer === data.correctAnswer;
     setIsCorrect(correct);
-    setShowCorrectAnswer(true);
-    setHasAnswered(true);
     onAnswer(correct);
   };
 
@@ -82,29 +62,32 @@ const QuizCard: React.FC<QuizCardProps> = ({
         <div className="text-2xl font-bold mb-6 text-center">
           {data.question}
         </div>
-        <DropZone
-          onDrop={handleDrop}
-          isCorrect={isCorrect}
-          droppedAnswer={droppedAnswer}
-          hasAnswered={hasAnswered}
-        />
-        <div className="grid grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 gap-4 mt-6">
           {data.options.map((option) => (
-            <DraggableAnswer
+            <Button
               key={option.id}
-              id={option.id}
-              text={option.text}
-              isCorrect={
-                showCorrectAnswer && option.text === data.correctAnswer
-              }
-              disabled={hasAnswered}
-            />
+              variant={selectedAnswer === option.text ? "default" : "outline"}
+              className={`w-full ${
+                selectedAnswer === option.text &&
+                isCorrect !== null &&
+                (isCorrect ? "bg-green-200" : "bg-red-200")
+              }`}
+              onClick={() => handleAnswerSelect(option.text)}
+              disabled={selectedAnswer !== null}
+            >
+              {option.text}
+            </Button>
           ))}
         </div>
-        {showCorrectAnswer && (
+        {isCorrect !== null && (
           <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-            <p className="font-bold">Explanation:</p>
-            <p>{data.explanation}</p>
+            <p className="font-bold">
+              {isCorrect ? "Correct!" : "Incorrect. The correct answer is:"}
+            </p>
+            <p>{data.correctAnswer}</p>
+            <p className="mt-2">
+              <span className="font-bold">Explanation:</span> {data.explanation}
+            </p>
           </div>
         )}
         <div className="flex justify-between items-center mt-6">
@@ -119,7 +102,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
           <Button
             variant="outline"
             onClick={onNextQuestion}
-            disabled={!droppedAnswer}
+            disabled={selectedAnswer === null}
           >
             Next
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -131,18 +114,25 @@ const QuizCard: React.FC<QuizCardProps> = ({
 };
 
 interface QuizPageProps {
-  questions: QuizQuestion[];
+  questions: KIDLINGO_DB[];
   levelId: number;
-  cardId: number;
+  topicId: number;
+  cardIndex: number;
 }
 
-export function QuizPage({ questions, levelId, cardId }: QuizPageProps) {
+export function QuizPage({
+  questions,
+  levelId,
+  topicId,
+  cardIndex,
+}: QuizPageProps) {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] =
     useState<SpeechSynthesis | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -208,8 +198,6 @@ export function QuizPage({ questions, levelId, cardId }: QuizPageProps) {
     }
   };
 
-  const Backend = isTouchDevice() ? TouchBackend : HTML5Backend;
-
   if (isCompleted) {
     return (
       <SummarySlide
@@ -221,12 +209,12 @@ export function QuizPage({ questions, levelId, cardId }: QuizPageProps) {
   }
 
   return (
-    <DndProvider backend={Backend}>
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
-        <h1 className="text-4xl font-bold text-orange-500 mb-8">
-          Language Quiz
-        </h1>
-        <AnimatePresence mode="wait">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
+      <h1 className="text-4xl font-bold text-orange-500 mb-8">
+        Quiz - Set {cardIndex}
+      </h1>
+      <AnimatePresence mode="wait">
+        {questions && questions.length > 0 ? (
           <motion.div
             key={currentQuestionIndex}
             initial={{ opacity: 0, y: 20 }}
@@ -236,7 +224,20 @@ export function QuizPage({ questions, levelId, cardId }: QuizPageProps) {
             className="w-full max-w-lg"
           >
             <QuizCard
-              data={questions[currentQuestionIndex]}
+              data={{
+                question: questions[currentQuestionIndex].question,
+                options: questions[currentQuestionIndex].options.map(
+                  (option, index) => ({
+                    id: index.toString(),
+                    text: option.text,
+                  })
+                ),
+                correctAnswer:
+                  questions[currentQuestionIndex].options.find(
+                    (option) => option.correct === "true"
+                  )?.text || "",
+                explanation: questions[currentQuestionIndex].explanation,
+              }}
               currentQuestion={currentQuestionIndex + 1}
               totalQuestions={questions.length}
               onNextQuestion={handleNextQuestion}
@@ -245,123 +246,13 @@ export function QuizPage({ questions, levelId, cardId }: QuizPageProps) {
               speakWord={speakWord}
             />
           </motion.div>
-        </AnimatePresence>
-      </div>
-    </DndProvider>
+        ) : (
+          <p>No questions available</p>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
-
-const isTouchDevice = () =>
-  "ontouchstart" in window || navigator.maxTouchPoints > 0;
-
-const DraggableAnswer = ({
-  id,
-  text,
-  isCorrect,
-  disabled,
-}: AnswerOption & { isCorrect: boolean; disabled: boolean }) => {
-  const [{ isDragging }, drag, dragPreview] = useDrag(
-    () => ({
-      type: "answer",
-      item: { id, text },
-      collect: (monitor) => ({
-        isDragging: !!monitor.isDragging(),
-      }),
-      canDrag: !disabled,
-    }),
-    [disabled]
-  );
-
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!disabled) {
-      drag(ref);
-      dragPreview(ref);
-    } else {
-      drag(null);
-      dragPreview(null);
-    }
-  }, [drag, dragPreview, disabled]);
-
-  return (
-    <div
-      ref={ref}
-      className={`p-3 rounded-lg shadow-sm font-medium ${
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-move"
-      } transition-all ${isDragging ? "opacity-50 scale-105" : "opacity-100"} ${
-        isCorrect ? "bg-green-200" : "bg-orange-100 border"
-      }`}
-      aria-label={`Drag answer: ${text}`}
-    >
-      {text}
-    </div>
-  );
-};
-
-const DropZone = ({
-  onDrop,
-  isCorrect,
-  droppedAnswer,
-  hasAnswered,
-}: {
-  onDrop: (item: AnswerOption) => void;
-  isCorrect: boolean | null;
-  droppedAnswer: string | null;
-  hasAnswered: boolean;
-}) => {
-  const [{ isOver }, drop] = useDrop(
-    () => ({
-      accept: "answer",
-      drop: (item: AnswerOption) => {
-        if (!hasAnswered) {
-          onDrop(item);
-        }
-      },
-      collect: (monitor) => ({
-        isOver: !!monitor.isOver(),
-      }),
-      canDrop: () => !hasAnswered,
-    }),
-    [hasAnswered, onDrop]
-  );
-
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    drop(ref);
-  }, [drop]);
-
-  let bgColor = "bg-gray-200";
-  if (isCorrect === true) bgColor = "bg-green-200";
-  if (isCorrect === false) bgColor = "bg-red-200";
-
-  return (
-    <div
-      ref={ref}
-      className={`h-24 w-full ${bgColor} bg-orange-50 rounded-lg flex flex-col items-center justify-center ${
-        isOver && !hasAnswered
-          ? "border-4 border-orange-200"
-          : "border-4 border-dashed border-orange-200"
-      } transition-all duration-300`}
-      aria-label="Drop answer here"
-    >
-      {droppedAnswer ? (
-        <>
-          <div className="text-xl font-bold mb-2">{droppedAnswer}</div>
-          <div className="text-sm">
-            {isCorrect === true && "✅ Correct!"}
-            {isCorrect === false && "❌ Incorrect."}
-          </div>
-        </>
-      ) : (
-        <p className="text-xl font-bold text-orange-500/50">
-          Drop your answer here
-        </p>
-      )}
-    </div>
-  );
-};
 
 const SummarySlide = ({
   correctAnswers,

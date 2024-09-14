@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, RefreshCcw, Volume2 } from "lucide-react";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useRouter } from "next/navigation";
+import { KIDLINGO_DB, FlashcardData } from "@/lib/schema";
+import Link from "next/link";
 
 const isTouchDevice = () =>
   "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -17,12 +19,6 @@ const isTouchDevice = () =>
 interface AnswerOption {
   id: string;
   text: string;
-}
-
-interface FlashcardData {
-  question: string;
-  options: AnswerOption[];
-  correctAnswer: string;
 }
 
 const DraggableAnswer = ({
@@ -120,6 +116,7 @@ interface FlashcardProps {
   onPrevCard: () => void;
   onAnswer: (isCorrect: boolean) => void;
   speakWord: (text: string) => void;
+  mode: "learn" | "quiz";
 }
 
 const Flashcard: React.FC<FlashcardProps> = ({
@@ -130,6 +127,7 @@ const Flashcard: React.FC<FlashcardProps> = ({
   onPrevCard,
   onAnswer,
   speakWord,
+  mode,
 }) => {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [droppedAnswer, setDroppedAnswer] = useState<string | null>(null);
@@ -208,6 +206,12 @@ const Flashcard: React.FC<FlashcardProps> = ({
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
+        {mode === "learn" && droppedAnswer && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+            <p className="font-bold">Explanation:</p>
+            <p>{data.explanation}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -217,10 +221,16 @@ const SummarySlide = ({
   correctAnswers,
   totalQuestions,
   onRestart,
+  levelId,
+  topicId,
+  mode,
 }: {
   correctAnswers: number;
   totalQuestions: number;
   onRestart: () => void;
+  levelId: number;
+  topicId: number;
+  mode: "learn" | "quiz";
 }) => {
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
@@ -237,28 +247,40 @@ const SummarySlide = ({
             style={{ width: `${(correctAnswers / totalQuestions) * 100}%` }}
           ></div>
         </div>
-        <button
-          onClick={onRestart}
-          className="bg-orange-400 text-white px-4 py-2 rounded-full transition-transform hover:scale-105 flex items-center justify-center mx-auto"
-        >
-          <RefreshCcw size={20} className="mr-2" />
-          Restart Quiz
-        </button>
+        <div className="flex flex-col space-y-4">
+          <button
+            onClick={onRestart}
+            className="bg-orange-400 text-white px-4 py-2 rounded-full transition-transform hover:scale-105 flex items-center justify-center mx-auto"
+          >
+            <RefreshCcw size={20} className="mr-2" />
+            Restart {mode === "learn" ? "Learn" : "Quiz"}
+          </button>
+          <Link
+            href="/"
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-full transition-transform hover:scale-105 flex items-center justify-center mx-auto"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );
 };
 
 interface FlashcardPageProps {
-  flashcards: FlashcardData[];
+  flashcards: KIDLINGO_DB[];
   levelId: number;
-  cardId?: number;
+  topicId: number;
+  cardIndex: number;
+  mode: "learn" | "quiz";
 }
 
 export function FlashcardPage({
   flashcards,
   levelId,
-  cardId,
+  topicId,
+  cardIndex,
+  mode,
 }: FlashcardPageProps) {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -340,6 +362,9 @@ export function FlashcardPage({
         correctAnswers={correctAnswers}
         totalQuestions={flashcards.length}
         onRestart={handleRestart}
+        levelId={levelId}
+        topicId={topicId}
+        mode={mode}
       />
     );
   }
@@ -348,7 +373,7 @@ export function FlashcardPage({
     <DndProvider backend={Backend}>
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
         <h1 className="text-4xl font-bold text-orange-500 mb-8">
-          Language Flashcards
+          {mode === "learn" ? "Learn" : "Quiz"} - Set {cardIndex}
         </h1>
         <AnimatePresence mode="wait">
           {flashcards && flashcards.length > 0 ? (
@@ -361,13 +386,27 @@ export function FlashcardPage({
               className="w-full max-w-lg"
             >
               <Flashcard
-                data={flashcards[currentCardIndex]}
+                data={{
+                  question: flashcards[currentCardIndex].question,
+                  options: flashcards[currentCardIndex].options.map(
+                    (option, index) => ({
+                      id: index.toString(),
+                      text: option.text,
+                    })
+                  ),
+                  correctAnswer:
+                    flashcards[currentCardIndex].options.find(
+                      (option) => option.correct === "true"
+                    )?.text || "",
+                  explanation: flashcards[currentCardIndex].explanation,
+                }}
                 currentCard={currentCardIndex + 1}
                 totalCards={flashcards.length}
                 onNextCard={handleNextCard}
                 onPrevCard={handlePrevCard}
                 onAnswer={handleAnswer}
                 speakWord={speakWord}
+                mode={mode}
               />
             </motion.div>
           ) : (

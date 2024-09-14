@@ -1,50 +1,50 @@
-"use client";
-
 import { FlashcardPage } from "@/components/flashcard-page";
 import { buttonVariants } from "@/components/ui/button";
-import { languageLearningLevels, LanguageLearningLevelTypes } from "@/content";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getKidlingoContent } from "@/actions/kidlingo";
 
-export default function LearnPage({
+export default async function LearnPage({
   params,
 }: {
   params: { levelId: string; cardId: string };
 }) {
   const levelId = parseInt(params.levelId, 10);
-  const cardId = parseInt(params.cardId, 10);
-  const level = languageLearningLevels.find(
-    (l: LanguageLearningLevelTypes) => l.number === levelId
+  const [_, topicId, cardIndex] = params.cardId.split("-").map(Number);
+
+  const content = await getKidlingoContent();
+  const topicContent = content.filter(
+    (item) => item.level_id === levelId && item.topic_id === topicId
   );
-  const card = level?.cards[cardId];
 
-  if (!level || !card) {
-    return <div>Level or card not found</div>;
+  const startIndex = (cardIndex - 1) * 5;
+  const endIndex = startIndex + 5;
+  const flashcards = topicContent.slice(startIndex, endIndex);
+
+  if (flashcards.length === 0) {
+    return <div>No content found for this level and topic</div>;
   }
 
-  if ("flashcards" in card) {
-    return (
-      <div className="bg-gradient-to-b from-orange-50 to-green-50">
-        <Link
-          href="/"
-          className={cn(
-            buttonVariants({ variant: "outline" }),
-            "flex items-center gap-2 absolute top-4 left-4"
-          )}
-        >
-          <ArrowLeft size={20} />
-          Back
-        </Link>
-        <FlashcardPage
-          flashcards={card.flashcards}
-          levelId={levelId}
-          cardId={cardId}
-        />
-      </div>
-    );
-  }
-
-  // Handle QuizCard case or return an error message
-  return <div>This card type is not supported</div>;
+  return (
+    <div className="bg-gradient-to-b from-orange-50 to-green-50">
+      <Link
+        href="/"
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "flex items-center gap-2 absolute top-4 left-4"
+        )}
+      >
+        <ArrowLeft size={20} />
+        Back
+      </Link>
+      <FlashcardPage
+        flashcards={flashcards}
+        levelId={levelId}
+        topicId={topicId}
+        cardIndex={cardIndex}
+        mode="learn"
+      />
+    </div>
+  );
 }
