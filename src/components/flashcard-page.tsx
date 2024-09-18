@@ -303,10 +303,6 @@ export function FlashcardPage({
   const endIndex = startIndex + 5;
   const languageContent = topicContent.slice(startIndex, endIndex);
 
-  console.log(topicId);
-  console.log(
-    content.filter((f) => f.language_id === 2 && f.level_id === levelId)
-  );
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       setSpeechSynthesis(window.speechSynthesis);
