@@ -12,6 +12,8 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useRouter } from "next/navigation";
 import { KIDLINGO_DB, FlashcardData } from "@/lib/schema";
 import Link from "next/link";
+import useLanguage from "@/hooks/use-language";
+import useLanguageStore from "@/hooks/use-language";
 
 const isTouchDevice = () =>
   "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -268,7 +270,7 @@ const SummarySlide = ({
 };
 
 interface FlashcardPageProps {
-  flashcards: KIDLINGO_DB[];
+  content: KIDLINGO_DB[];
   levelId: number;
   topicId: number;
   cardIndex: number;
@@ -276,7 +278,7 @@ interface FlashcardPageProps {
 }
 
 export function FlashcardPage({
-  flashcards,
+  content,
   levelId,
   topicId,
   cardIndex,
@@ -288,12 +290,28 @@ export function FlashcardPage({
   const [isCompleted, setIsCompleted] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] =
     useState<SpeechSynthesis | null>(null);
-  const router = useRouter();
+  const useLanguage = useLanguageStore((state) => state);
+  const [flashcards, setFlashcards] = useState<KIDLINGO_DB[]>([]);
 
+  const topicContent = content.filter(
+    (f) =>
+      f.language_id === useLanguage.language.id &&
+      f.level_id === levelId &&
+      f.topic_id === topicId
+  );
+  const startIndex = (cardIndex - 1) * 5;
+  const endIndex = startIndex + 5;
+  const languageContent = topicContent.slice(startIndex, endIndex);
+
+  console.log(topicId);
+  console.log(
+    content.filter((f) => f.language_id === 2 && f.level_id === levelId)
+  );
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       setSpeechSynthesis(window.speechSynthesis);
     }
+    setFlashcards(languageContent);
   }, []);
 
   const handleNextCard = () => {

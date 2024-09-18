@@ -14,17 +14,6 @@ export default async function QuizPageWrapper({
   const [_, topicId, cardIndex] = params.cardId.split("-").map(Number);
 
   const content = await getKidlingoContent();
-  const topicContent = content.filter(
-    (item) => item.level_id === levelId && item.topic_id === topicId
-  );
-
-  const startIndex = (cardIndex - 1) * 5;
-  const endIndex = startIndex + 5;
-  const questions = topicContent.slice(startIndex, endIndex);
-
-  if (questions.length === 0) {
-    return <div>No content found for this level and topic</div>;
-  }
 
   return (
     <div className="bg-gradient-to-b from-orange-50 to-green-50">
@@ -39,7 +28,7 @@ export default async function QuizPageWrapper({
         Back
       </Link>
       <QuizPage
-        questions={questions}
+        content={content}
         levelId={levelId}
         topicId={topicId}
         cardIndex={cardIndex}

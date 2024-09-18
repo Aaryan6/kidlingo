@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, RefreshCcw, Volume2 } from "lucide-react";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useRouter } from "next/navigation";
 import { KIDLINGO_DB, FlashcardData } from "@/lib/schema";
+import useLanguageStore from "@/hooks/use-language";
 
 interface QuizCardProps {
   data: FlashcardData;
@@ -114,14 +115,14 @@ const QuizCard: React.FC<QuizCardProps> = ({
 };
 
 interface QuizPageProps {
-  questions: KIDLINGO_DB[];
+  content: KIDLINGO_DB[];
   levelId: number;
   topicId: number;
   cardIndex: number;
 }
 
 export function QuizPage({
-  questions,
+  content,
   levelId,
   topicId,
   cardIndex,
@@ -132,7 +133,17 @@ export function QuizPage({
   const [isCompleted, setIsCompleted] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] =
     useState<SpeechSynthesis | null>(null);
-  const router = useRouter();
+  const useLanguage = useLanguageStore((state) => state);
+  const topicContent = content.filter(
+    (item) =>
+      item.level_id === levelId &&
+      item.topic_id === topicId &&
+      item.language_id === useLanguage.language.id
+  );
+
+  const startIndex = (cardIndex - 1) * 5;
+  const endIndex = startIndex + 5;
+  const questions = topicContent.slice(startIndex, endIndex);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {

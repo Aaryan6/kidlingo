@@ -23,23 +23,35 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { KIDLINGO_LEVELS, KIDLINGO_TOPICS, KIDLINGO_DB } from "@/lib/schema";
+import {
+  KIDLINGO_LEVELS,
+  KIDLINGO_TOPICS,
+  KIDLINGO_DB,
+  KIDLINGO_LANGUAGES,
+} from "@/lib/schema";
+import { SelectLanguage } from "./select-language";
 
 export function ModernKidLingo({
   levels,
   topics,
   content,
+  languages,
 }: {
   levels: KIDLINGO_LEVELS[];
   topics: KIDLINGO_TOPICS[];
   content: KIDLINGO_DB[];
+  languages: KIDLINGO_LANGUAGES[];
 }) {
   const { userLevel, userProgress, updateUserProgress } = useUserProgress();
   const [activeLevel, setActiveLevel] = useState(1);
+  const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const router = useRouter();
 
   const getTopicCards = (topicId: number) => {
-    const topicContent = content.filter((item) => item.topic_id === topicId);
+    const topicContent = content.filter(
+      (item) =>
+        item.topic_id === topicId && item.language_id === currentLanguage.id
+    );
     const cardCount = Math.ceil(topicContent.length / 5);
     const cards = [];
 
@@ -81,6 +93,10 @@ export function ModernKidLingo({
           <Badge variant="default" className="text-lg py-1 px-3">
             Level {userLevel}
           </Badge>
+        </div>
+
+        <div className="mb-8">
+          <SelectLanguage languages={languages} />
         </div>
 
         {levels.map((level) => (
